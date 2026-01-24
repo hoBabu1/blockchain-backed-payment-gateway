@@ -3,8 +3,10 @@
 pragma solidity 0.8.20;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Pausable} from "openzeppelin-contracts/contracts/utils/Pausable.sol";
 
-contract OnChainPaymentGateWay {
+contract OnChainPaymentGateWay is Ownable, Pausable {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable acceptedToken;
@@ -59,11 +61,11 @@ contract OnChainPaymentGateWay {
         _;
     }
 
-    constructor(address _paymentToken) {
+    constructor(address _paymentToken) Ownable(msg.sender) {
         acceptedToken = IERC20(_paymentToken);
     }
 
-    function registerMerchant(string memory _businessName) external {
+    function registerMerchant(string memory _businessName) external whenNotPaused {
         merchantInfo[msg.sender] = Merchant({
             merchant: msg.sender,
             businessName: _businessName,
@@ -78,7 +80,7 @@ contract OnChainPaymentGateWay {
         address _coustmer,
         uint256 _expiryDuration,
         string memory _shortDescription
-    ) external onlyMerchant {
+    ) external onlyMerchant whenNotPaused {
         uint256 currPayId = ++paymentId;
         paymentIntentInfo[currPayId] = PaymentIntent({
             merchant: msg.sender,
@@ -99,7 +101,7 @@ contract OnChainPaymentGateWay {
         );
     }
 
-    function executePayment(uint256 _payId, uint256 _amount) external {
+    function executePayment(uint256 _payId, uint256 _amount) external whenNotPaused {
         PaymentIntent memory _info = paymentIntentInfo[_payId];
 
         if (_amount != _info.amount) {
@@ -120,5 +122,13 @@ contract OnChainPaymentGateWay {
         paymentIntentInfo[_payId].confirmedAt = block.timestamp;
 
         emit Paid(_amount, block.timestamp);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }
