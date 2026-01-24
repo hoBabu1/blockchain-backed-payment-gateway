@@ -6,6 +6,14 @@ import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "openzeppelin-contracts/contracts/utils/Pausable.sol";
 
+/**
+ * Note - Lets say that 3 Coin is enabled of now - TokenA, TokenB and TokenC. Merchant created a intent with TokenA but before payment of that intent
+ * TokenA disabled. Then Customer cannot pay for that intent.
+ * Two ways
+ * - create a new intent
+ * - modify the intent
+ */
+
 contract OnChainPaymentGateWay is Ownable, Pausable {
     using SafeERC20 for IERC20;
 
@@ -28,6 +36,8 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     error OnlyCustomerCanPay();
     error InvalidToken();
     error NotEnabled();
+    error AlreadyPaid();
+    error InvalidTokenOrNotEnabled();
 
     struct Merchant {
         address merchant;
@@ -44,7 +54,7 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         uint256 expiryTime;
         uint256 confirmedAt;
         bool isPaid;
-        string description;
+        uint256 lastUpdatedAt;
     }
 
     uint256 paymentId = 0;
@@ -62,10 +72,15 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         _;
     }
 
-    constructor(address _owner) Ownable(_owner) {
-    }
+    constructor(address _owner) Ownable(_owner) {}
 
-    function registerMerchant(string memory _businessName) external whenNotPaused {
+    // ================================================================
+    // │                   onlyMerchant                                │
+    // ================================================================
+
+    function registerMerchant(
+        string memory _businessName
+    ) external whenNotPaused {
         merchantInfo[msg.sender] = Merchant({
             merchant: msg.sender,
             businessName: _businessName,
@@ -79,11 +94,9 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         uint256 _amount,
         address _coustmer,
         uint256 _expiryDuration,
-        IERC20 _tokenAddress,
-        string memory _shortDescription
+        IERC20 _tokenAddress
     ) external onlyMerchant whenNotPaused {
-
-        if(!isEnabled[_tokenAddress]){
+        if (!isEnabled[_tokenAddress]) {
             revert NotEnabled();
         }
         uint256 currPayId = ++paymentId;
@@ -92,11 +105,11 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
             customer: _coustmer,
             amount: _amount,
             createdAt: block.timestamp,
-            token:_tokenAddress,
+            token: _tokenAddress,
             expiryTime: block.timestamp + _expiryDuration,
             confirmedAt: 0,
             isPaid: false,
-            description: _shortDescription
+            lastUpdatedAt: block.timestamp
         });
 
         emit PaymentIntentCreated(
@@ -107,11 +120,36 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         );
     }
 
-    function executePayment(uint256 _payId, uint256 _amount, IERC20 _token) external whenNotPaused {
+    function updateIntent(
+        uint256 _payId,
+        uint256 _amount,
+        IERC20 _token,
+        address _customer
+    ) external onlyMerchant {
+        PaymentIntent storage _info = paymentIntentInfo[_payId];
+        if (_info.isPaid || block.timestamp > _info.expiryTime) {
+            revert AlreadyPaid();
+        }
+
+        _info.amount = _amount;
+        _info.token = _token;
+        _info.customer = _customer;
+        _info.lastUpdatedAt = block.timestamp;
+    }
+
+    // ================================================================
+    // │                  Customer Interaction                         │
+    // ================================================================
+
+    function executePayment(
+        uint256 _payId,
+        uint256 _amount,
+        IERC20 _token
+    ) external whenNotPaused {
         PaymentIntent memory _info = paymentIntentInfo[_payId];
 
-        if(_info.token != _token){
-            revert InvalidToken();
+        if (_info.token != _token || !isEnabled[_token]) {
+            revert InvalidTokenOrNotEnabled();
         }
 
         if (_amount != _info.amount) {
@@ -134,6 +172,10 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         emit Paid(_amount, block.timestamp);
     }
 
+    // ================================================================
+    // │                   onlyOwner                                   │
+    // ================================================================
+
     function pause() external onlyOwner {
         _pause();
     }
@@ -148,5 +190,16 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
 
     function disableToken(IERC20 _token) external onlyOwner {
         isEnabled[_token] = false;
-    } 
+    }
+
+    function emergencyWithdraw(address _token) external onlyOwner {
+        IERC20(_token).safeTransfer(
+            msg.sender,
+            IERC20(_token).balanceOf(msg.sender)
+        );
+    }
+
+    // ================================================================
+    // │                  Getters                                     │
+    // ================================================================
 }
