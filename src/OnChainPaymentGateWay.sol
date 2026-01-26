@@ -19,15 +19,20 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
 
     event MerchantRegistered(
         address indexed merchant,
-        uint256 indexed registeredAT,
+        uint256 indexed registeredAt,
         string businessName
     );
     event PaymentIntentCreated(
+        uint256 indexed payId,
+        address indexed customer,
+        uint256 indexed amount,
         address merchant,
-        address coustmer,
-        uint256 amount,
-        uint256 createdAt
+        uint256 createdAt,
+        uint256 expiryTime
     );
+
+    event TokenEnabled(address indexed _token);
+    event TokenDisabled(address indexed _token);
 
     event Paid(uint256 indexed amount, uint256 paidAt);
     error MerchantNotRegistered();
@@ -35,14 +40,16 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     error TimePassed();
     error OnlyCustomerCanPay();
     error InvalidToken();
-    error NotEnabled();
+    // error NotEnabled();
     error AlreadyPaid();
     error InvalidTokenOrNotEnabled();
+    error MerchantIsInactive();
 
     struct Merchant {
         address merchant;
         string businessName;
         uint256 registeredAt;
+        bool isActive;
     }
 
     struct PaymentIntent {
@@ -52,7 +59,7 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         uint256 createdAt;
         IERC20 token;
         uint256 expiryTime;
-        uint256 confirmedAt;
+        uint256 paidAt;
         bool isPaid;
         uint256 lastUpdatedAt;
     }
@@ -64,10 +71,17 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     //     public paymentIntentInfo;
 
     mapping(uint256 _payId => PaymentIntent) public paymentIntentInfo;
-    mapping(IERC20 _token => bool _isEnabled) public isEnabled;
+    mapping(IERC20 _token => bool _isTokenEnabled) public isTokenEnabled;
     modifier onlyMerchant() {
         if (merchantInfo[msg.sender].merchant == address(0)) {
             revert MerchantNotRegistered();
+        }
+        _;
+    }
+
+    modifier checkTokenEnabled(IERC20 _token) {
+        if (!isTokenEnabled[_token]) {
+            revert InvalidTokenOrNotEnabled();
         }
         _;
     }
@@ -84,7 +98,8 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         merchantInfo[msg.sender] = Merchant({
             merchant: msg.sender,
             businessName: _businessName,
-            registeredAt: block.timestamp
+            registeredAt: block.timestamp,
+            isActive: true
         });
 
         emit MerchantRegistered(msg.sender, block.timestamp, _businessName);
@@ -92,31 +107,34 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
 
     function createPaymentIntent(
         uint256 _amount,
-        address _coustmer,
+        address _customer,
         uint256 _expiryDuration,
         IERC20 _tokenAddress
-    ) external onlyMerchant whenNotPaused {
-        if (!isEnabled[_tokenAddress]) {
-            revert NotEnabled();
+    ) external onlyMerchant whenNotPaused checkTokenEnabled(_tokenAddress) {
+        if (!merchantInfo[msg.sender].isActive) {
+            revert MerchantIsInactive();
         }
+
         uint256 currPayId = ++paymentId;
         paymentIntentInfo[currPayId] = PaymentIntent({
             merchant: msg.sender,
-            customer: _coustmer,
+            customer: _customer,
             amount: _amount,
             createdAt: block.timestamp,
             token: _tokenAddress,
             expiryTime: block.timestamp + _expiryDuration,
-            confirmedAt: 0,
+            paidAt: 0,
             isPaid: false,
             lastUpdatedAt: block.timestamp
         });
 
         emit PaymentIntentCreated(
-            msg.sender,
-            _coustmer,
+            currPayId,
+            _customer,
             _amount,
-            block.timestamp
+            msg.sender,
+            block.timestamp,
+            block.timestamp + _expiryDuration
         );
     }
 
@@ -148,7 +166,7 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     ) external whenNotPaused {
         PaymentIntent memory _info = paymentIntentInfo[_payId];
 
-        if (_info.token != _token || !isEnabled[_token]) {
+        if (_info.token != _token || !isTokenEnabled[_token]) {
             revert InvalidTokenOrNotEnabled();
         }
 
@@ -167,7 +185,7 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         _info.token.safeTransferFrom(msg.sender, _info.merchant, _amount);
 
         paymentIntentInfo[_payId].isPaid = true;
-        paymentIntentInfo[_payId].confirmedAt = block.timestamp;
+        paymentIntentInfo[_payId].paidAt = block.timestamp;
 
         emit Paid(_amount, block.timestamp);
     }
@@ -185,11 +203,15 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     }
 
     function enableToken(IERC20 _token) external onlyOwner {
-        isEnabled[_token] = true;
+        isTokenEnabled[_token] = true;
+        emit TokenEnabled(address(_token));
     }
 
-    function disableToken(IERC20 _token) external onlyOwner {
-        isEnabled[_token] = false;
+    function disableToken(
+        IERC20 _token
+    ) external onlyOwner checkTokenEnabled(IERC20(_token)) {
+        isTokenEnabled[_token] = false;
+        emit TokenDisabled(address(_token));
     }
 
     function emergencyWithdraw(address _token) external onlyOwner {
@@ -202,4 +224,16 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     // ================================================================
     // │                  Getters                                     │
     // ================================================================
+
+    function getMerchantInfo(
+        address _merchant
+    ) external view returns (Merchant memory) {
+        return merchantInfo[_merchant];
+    }
+
+    function getPaymentIntentInfo(
+        uint256 _payId
+    ) external view returns (PaymentIntent memory) {
+        return paymentIntentInfo[_payId];
+    }
 }
