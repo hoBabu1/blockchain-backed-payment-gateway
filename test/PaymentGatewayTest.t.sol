@@ -472,13 +472,15 @@ contract PaymentGatewayTest is Test {
         mUsdc.mint(customer1, startingAmount);
         mUsdc.approve(address(ocpg), startingAmount);
 
-        vm.expectRevert(OnChainPaymentGateWay.InvalidTokenOrNotEnabled.selector);
+        vm.expectRevert(
+            OnChainPaymentGateWay.InvalidTokenOrNotEnabled.selector
+        );
 
         ocpg.executePayment(1, startingAmount, IERC20(unregistreredToken));
         vm.stopPrank();
     }
 
-     function test_ExecutePayment_Revert_RevertAmount_NotEqual()
+    function test_ExecutePayment_Revert_RevertAmount_NotEqual()
         public
         registerMerchant
         createPaymentIntent
@@ -487,7 +489,13 @@ contract PaymentGatewayTest is Test {
         mUsdc.mint(customer1, startingAmount);
         mUsdc.approve(address(ocpg), startingAmount);
 
-        vm.expectRevert(abi.encodeWithSelector(OnChainPaymentGateWay.InvalidAmount.selector, startingAmount, startingAmount + 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OnChainPaymentGateWay.InvalidAmount.selector,
+                startingAmount,
+                startingAmount + 1
+            )
+        );
 
         ocpg.executePayment(1, startingAmount + 1, IERC20(mUsdc));
         vm.stopPrank();
@@ -498,8 +506,7 @@ contract PaymentGatewayTest is Test {
         registerMerchant
         createPaymentIntent
     {
-
-        vm.warp(block.timestamp+ 5 days);
+        vm.warp(block.timestamp + 5 days);
         vm.startPrank(customer1);
         mUsdc.mint(customer1, startingAmount);
         mUsdc.approve(address(ocpg), startingAmount);
@@ -509,12 +516,12 @@ contract PaymentGatewayTest is Test {
         ocpg.executePayment(1, startingAmount, IERC20(mUsdc));
         vm.stopPrank();
     }
+
     function test_ExecutePayment_Revert_OnlySpecificCustomerCanPay()
         public
         registerMerchant
         createPaymentIntent
     {
-
         vm.startPrank(makeAddr("Differentuser"));
         mUsdc.mint(customer1, startingAmount);
         mUsdc.approve(address(ocpg), startingAmount);
@@ -525,5 +532,79 @@ contract PaymentGatewayTest is Test {
         vm.stopPrank();
     }
 
+    // ================================================================
+    // │                        onlyOwner                              │
+    // ================================================================
 
+    function test_Pause_OnlyOwner() external {
+        vm.startPrank(owner);
+        ocpg.pause();
+        ocpg.unpause();
+        vm.stopPrank();
+    }
+
+    function test_Pause_NonOwnerRevert() public {
+        vm.expectRevert();
+        vm.startPrank(merchant1);
+        ocpg.pause();
+        vm.stopPrank();
+    }
+
+    function test_UnPause_OnlyOwner() external {
+        vm.startPrank(owner);
+        ocpg.pause();
+        ocpg.unpause();
+        vm.stopPrank();
+    }
+
+    function test_UnPause_NonOwnerRevert() public {
+        vm.startPrank(owner);
+        ocpg.pause();
+        vm.stopPrank();
+        vm.expectRevert();
+        vm.startPrank(merchant1);
+        ocpg.unpause();
+        vm.stopPrank();
+    }
+
+    function test_EnableToken() public {
+        assertEq(ocpg.isTokenAllowed(IERC20(unregistreredToken)), false);
+        vm.startPrank(owner);
+        ocpg.enableToken(IERC20(unregistreredToken));
+        vm.stopPrank();
+
+        assertEq(ocpg.isTokenAllowed(IERC20(unregistreredToken)), true);
+    }
+
+    function test_EnableToken_Revert_OnlyOwner() public {
+        vm.expectRevert();
+        vm.startPrank(merchant1);
+        ocpg.enableToken(IERC20(unregistreredToken));
+        vm.stopPrank();
+    }
+
+    function test_DisableToken() public {
+        assertEq(ocpg.isTokenAllowed(IERC20(mUsdc)), true);
+        vm.startPrank(owner);
+        ocpg.disableToken(IERC20(mUsdc));
+        vm.stopPrank();
+        assertEq(ocpg.isTokenAllowed(IERC20(mUsdc)), false);
+    }
+
+    function test_DisableToken_Revert_OnlyOwner() public {
+        vm.startPrank(merchant1);
+        vm.expectRevert();
+        ocpg.disableToken(IERC20(mUsdc));
+        vm.stopPrank();
+    }
+
+    function test_DisableToken_Revert_TokenNotenabled() public {
+        assertEq(ocpg.isTokenAllowed(IERC20(unregistreredToken)), false);
+        vm.startPrank(owner);
+        vm.expectRevert(
+            OnChainPaymentGateWay.InvalidTokenOrNotEnabled.selector
+        );
+        ocpg.disableToken(IERC20(unregistreredToken));
+        vm.stopPrank();
+    }
 }

@@ -161,7 +161,13 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         uint256 _amount,
         IERC20 _token,
         address _customer
-    ) external whenNotPaused onlyMerchant checkTokenEnabled(_token) isMerchantActive(msg.sender){
+    )
+        external
+        whenNotPaused
+        onlyMerchant
+        checkTokenEnabled(_token)
+        isMerchantActive(msg.sender)
+    {
         PaymentIntent storage _info = paymentIntentInfo[_payId];
         if (_info.isPaid) {
             revert AlreadyPaid();
@@ -245,15 +251,15 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         emit TokenEnabled(address(_token));
     }
 
-    function makeMerchantInActive(address _merchant) external onlyOwner {
-        merchantInfo[_merchant].isActive = false;
-    }
-
     function disableToken(
         IERC20 _token
     ) external onlyOwner checkTokenEnabled(IERC20(_token)) {
         isTokenEnabled[_token] = false;
         emit TokenDisabled(address(_token));
+    }
+
+    function makeMerchantInActive(address _merchant) external onlyOwner {
+        merchantInfo[_merchant].isActive = false;
     }
 
     function emergencyWithdraw(address _token) external onlyOwner {
@@ -277,5 +283,9 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         uint256 _payId
     ) external view returns (PaymentIntent memory) {
         return paymentIntentInfo[_payId];
+    }
+
+    function isTokenAllowed(IERC20 _token) external view returns (bool) {
+        return isTokenEnabled[_token];
     }
 }
