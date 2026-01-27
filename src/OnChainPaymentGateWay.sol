@@ -39,6 +39,13 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         uint256 indexed amount,
         uint256 indexed paidAt
     );
+    event IntentUpdated(
+        uint256 indexed payId,
+        address indexed customer,
+        uint256 indexed amount,
+        address token,
+        uint256 updatedAt
+    );
     error MerchantNotRegistered();
     error InvalidAmount(uint256 actualAmount, uint256 currAmount);
     error TimePassed();
@@ -89,8 +96,8 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         _;
     }
 
-    modifier isMerchantActive() {
-        if (!merchantInfo[msg.sender].isActive) {
+    modifier isMerchantActive(address _merchant) {
+        if (!merchantInfo[_merchant].isActive) {
             revert MerchantIsInactive();
         }
         _;
@@ -124,7 +131,7 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         onlyMerchant
         whenNotPaused
         checkTokenEnabled(_tokenAddress)
-        isMerchantActive
+        isMerchantActive(msg.sender)
     {
         uint256 currPayId = ++paymentId;
         paymentIntentInfo[currPayId] = PaymentIntent({
@@ -154,16 +161,28 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         uint256 _amount,
         IERC20 _token,
         address _customer
-    ) external onlyMerchant checkTokenEnabled(_token) {
+    ) external whenNotPaused onlyMerchant checkTokenEnabled(_token) isMerchantActive(msg.sender){
         PaymentIntent storage _info = paymentIntentInfo[_payId];
-        if (_info.isPaid || block.timestamp > _info.expiryTime) {
+        if (_info.isPaid) {
             revert AlreadyPaid();
+        }
+
+        if (block.timestamp > _info.expiryTime) {
+            revert TimePassed();
         }
 
         _info.amount = _amount;
         _info.token = _token;
         _info.customer = _customer;
         _info.lastUpdatedAt = block.timestamp;
+
+        emit IntentUpdated(
+            _payId,
+            _customer,
+            _amount,
+            address(_token),
+            block.timestamp
+        );
     }
 
     // ================================================================
