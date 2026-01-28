@@ -167,6 +167,18 @@ contract PaymentGatewayTest is Test {
         payIntent
     {}
 
+    //////////////////////////////
+    //registerMerchant///////////
+    ////////////////////////////
+
+    function test_Revert_AlreadyRegistered() public registerMerchant {
+        // Register Merchant
+        vm.startPrank(merchant1);
+        vm.expectRevert(OnChainPaymentGateWay.AlreadyRegistered.selector);
+        ocpg.registerMerchant("Trader");
+        vm.stopPrank();
+    }
+
     /////////////////////////////////////
     /// createPaymentIntent/////////////
     ///////////////////////////////////

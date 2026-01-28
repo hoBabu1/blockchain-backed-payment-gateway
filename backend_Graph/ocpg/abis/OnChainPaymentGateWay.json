@@ -7,6 +7,7 @@
     "type": "constructor"
   },
   { "inputs": [], "name": "AlreadyPaid", "type": "error" },
+  { "inputs": [], "name": "AlreadyRegistered", "type": "error" },
   { "inputs": [], "name": "EnforcedPause", "type": "error" },
   { "inputs": [], "name": "ExpectedPause", "type": "error" },
   {

@@ -1,8 +1,8 @@
 {
   "polygon-amoy": {
     "OnChainPaymentGateWay": {
-      "address": "0x7770F4153dC2FcD093D53675cF0121f5990d7b8F",
-      "startBlock": 32938151
+      "address": "0xafFeF770dD339633755e8C9A4f77322e00C7ed4C",
+      "startBlock": 32981386
     }
   }
 }

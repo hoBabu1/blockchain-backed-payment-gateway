@@ -8,9 +8,9 @@ dataSources:
     name: OnChainPaymentGateWay
     network: polygon-amoy
     source:
-      address: "0x7770F4153dC2FcD093D53675cF0121f5990d7b8F"
+      address: "0xafFeF770dD339633755e8C9A4f77322e00C7ed4C"
       abi: OnChainPaymentGateWay
-      startBlock: 32938151
+      startBlock: 32981386
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

@@ -55,6 +55,7 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     error AlreadyPaid();
     error InvalidTokenOrNotEnabled();
     error MerchantIsInactive();
+    error AlreadyRegistered();
 
     struct Merchant {
         string businessName;
@@ -112,6 +113,9 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     function registerMerchant(
         string memory _businessName
     ) external whenNotPaused {
+        if (merchantInfo[msg.sender].registeredAt != 0) {
+            revert AlreadyRegistered();
+        }
         merchantInfo[msg.sender] = Merchant({
             businessName: _businessName,
             registeredAt: block.timestamp,
