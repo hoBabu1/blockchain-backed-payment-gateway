@@ -39,7 +39,8 @@ dataSources:
           handler: handlePaid
         - event: Paused(address)
           handler: handlePaused
-        - event: PaymentIntentCreated(indexed uint256,indexed address,indexed uint256,address,uint256,uint256)
+        - event: PaymentIntentCreated(indexed uint256,indexed address,indexed
+            uint256,address,uint256,uint256)
           handler: handlePaymentIntentCreated
         - event: TokenDisabled(indexed address)
           handler: handleTokenDisabled
@@ -48,3 +49,26 @@ dataSources:
         - event: Unpaused(address)
           handler: handleUnpaused
       file: ./src/on-chain-payment-gate-way.ts
+  - kind: ethereum
+    name: MockUsdt
+    network: polygon-amoy
+    source:
+      address: "0xb86a664E16652413D57df3f6FcfA293083514bD4"
+      abi: MockUsdt
+      startBlock: 32981386
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Approval
+        - Transfer
+      abis:
+        - name: MockUsdt
+          file: ./abis/MockUsdt.json
+      eventHandlers:
+        - event: Approval(indexed address,indexed address,uint256)
+          handler: handleApproval
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: ./src/mock-usdt.ts
