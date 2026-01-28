@@ -90,6 +90,13 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
         emit EventsLib.MerchantRegistered(msg.sender, block.timestamp, _businessName);
     }
 
+    /**
+     *
+     * @param _amount How much the customer needs to pay
+     * @param _customer Wallet address of the person who should pay
+     * @param _expiryDuration How many seconds until this payment request expires
+     * @param _tokenAddress Which token the merchant wants to receive (must be enabled)
+     */
     function createPaymentIntent(
         uint256 _amount,
         address _customer,
@@ -164,6 +171,13 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     // │                  Customer Interaction                         │
     // ================================================================
 
+    /**
+     * Note: Customer must approve this contract to spend their tokens first!
+     *
+     * @param _payId The ID of the payment intent to pay
+     * @param _amount The exact amount to pay (must match the intent)
+     * @param _token The token to pay with (must match the intent)
+     */
     function executePayment(
         uint256 _payId,
         uint256 _amount,
@@ -230,7 +244,8 @@ contract OnChainPaymentGateWay is Ownable, Pausable {
     function makeMerchantActiveInActive(address _merchant, bool _status) external onlyOwner {
         merchantInfo[_merchant].isActive = _status;
     }
-
+    
+    // Will be useful when fee is enabled 
     function emergencyWithdraw(address _token) external onlyOwner {
         IERC20(_token).safeTransfer(
             msg.sender,
