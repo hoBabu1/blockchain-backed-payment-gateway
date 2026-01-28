@@ -1,0 +1,85 @@
+type IntentUpdated @entity(immutable: true) {
+  id: Bytes!
+  payId: BigInt! # uint256
+  customer: Bytes! # address
+  amount: BigInt! # uint256
+  token: Bytes! # address
+  updatedAt: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MerchantRegistered @entity(immutable: true) {
+  id: Bytes!
+  merchant: Bytes! # address
+  registeredAt: BigInt! # uint256
+  businessName: String! # string
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OwnershipTransferred @entity(immutable: true) {
+  id: Bytes!
+  previousOwner: Bytes! # address
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Paid @entity(immutable: true) {
+  id: Bytes!
+  payId: BigInt! # uint256
+  amount: BigInt! # uint256
+  paidAt: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Paused @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PaymentIntentCreated @entity(immutable: true) {
+  id: Bytes!
+  payId: BigInt! # uint256
+  customer: Bytes! # address
+  amount: BigInt! # uint256
+  merchant: Bytes! # address
+  createdAt: BigInt! # uint256
+  expiryTime: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenDisabled @entity(immutable: true) {
+  id: Bytes!
+  _token: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenEnabled @entity(immutable: true) {
+  id: Bytes!
+  _token: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Unpaused @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
